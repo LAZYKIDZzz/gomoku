@@ -1,0 +1,12 @@
+# runtime data
+players.json
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# claude harness
+.claude/worktrees/
