@@ -1,6 +1,9 @@
 # runtime data
 players.json
 
+# internal planning docs (not for public repo)
+ROADMAP.md
+
 # os / editor
 .DS_Store
 Thumbs.db

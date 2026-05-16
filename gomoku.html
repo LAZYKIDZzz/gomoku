@@ -119,11 +119,15 @@
   .id-badge.p2 { background: var(--magenta); }
   .id-badge.spec { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
   .id-badge.dim  { background: #333; color: var(--dim); }
+  .id-badge.room { background: var(--cyan); color: var(--bg); }
+  .id-badge.room.custom { background: var(--gold); color: var(--bg); }
   .id-badge:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
   .id-badge .dot {
     width: 10px; height: 10px; border-radius: 50%;
     background: currentColor;
   }
+  .id-badge .arrow { margin-left: 4px; font-size: 11px; opacity: 0.7; }
+  .meta-row { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; }
 
   .tag-row {
     grid-column: 1 / -1;
@@ -850,6 +854,187 @@
     margin-top: 4px;
   }
 
+  /* ─── room switcher modal ─── */
+  .switcher-card {
+    width: 720px; max-width: 92vw;
+    max-height: 88vh; overflow-y: auto;
+    border: 3px solid var(--ink);
+    background: var(--bg);
+    padding: 56px 56px 48px;
+    box-shadow: 16px 16px 0 var(--cyan);
+    position: relative;
+  }
+  .switcher-card::before {
+    content: "// ROOM SWITCHER · 房间切换";
+    position: absolute; top: -14px; left: 24px;
+    background: var(--bg); padding: 0 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.3em; color: var(--cyan);
+  }
+  .switcher-headline {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    margin-bottom: 8px;
+  }
+  .switcher-headline em { font-style: italic; color: var(--cyan); }
+  .switcher-section {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px dashed #333;
+  }
+  .switcher-section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .current-room-card {
+    border: 2px solid var(--cyan);
+    background: rgba(0,229,255,0.05);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .current-room-name {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 36px;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+  }
+  .current-room-name .star { color: var(--gold); }
+  .current-room-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: #aaa;
+    background: #0a0a0a;
+    padding: 8px 12px;
+    border: 1px dashed #333;
+    word-break: break-all;
+  }
+  .room-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .room-actions .btn { margin: 0; }
+  .join-input-wrap {
+    display: flex; gap: 8px; align-items: stretch;
+  }
+  .join-input {
+    flex: 1;
+    background: transparent;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.3em;
+    padding: 12px 16px;
+    text-transform: uppercase;
+    outline: none;
+    text-align: center;
+  }
+  .join-input:focus { border-color: var(--cyan); }
+  .join-input::placeholder { color: #444; }
+  .join-btn { width: auto; padding: 12px 24px; margin: 0; }
+
+  .rooms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .room-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background: #0d0d0d;
+    border: 1px solid #222;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    transition: all 0.15s ease;
+  }
+  .room-row:hover { background: #161616; border-color: #444; }
+  .room-row.current { background: rgba(0,229,255,0.08); border-color: var(--cyan); }
+  .room-row .rname {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+  }
+  .room-row .rname .star { color: var(--gold); margin-right: 4px; }
+  .room-row .rcounts { color: #aaa; }
+  .room-row .rcounts .full { color: var(--rust); }
+  .room-row .rstatus {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 3px 8px;
+    border: 1px solid #444;
+    color: #888;
+  }
+  .room-row .rstatus.playing { color: var(--lime); border-color: var(--lime); }
+  .room-row .rstatus.waiting { color: var(--gold); border-color: var(--gold); }
+  .room-row .rstatus.ended { color: #555; }
+  .room-row .rstatus.empty { color: #555; }
+  .room-row .rjoin {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    padding: 6px 14px;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .room-row .rjoin:hover { background: var(--cyan); color: var(--bg); }
+  .room-row .rjoin:disabled { background: #222; color: #555; cursor: not-allowed; }
+
+  .load-bars { display: flex; flex-direction: column; gap: 10px; }
+  .load-bar {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .load-bar .lbl { color: var(--dim); }
+  .load-bar .val { color: var(--ink); text-align: right; font-weight: 700; }
+  .load-bar .val.hot { color: var(--rust); }
+  .load-bar .val.warm { color: var(--gold); }
+  .load-track {
+    height: 8px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    overflow: hidden;
+    position: relative;
+  }
+  .load-fill {
+    height: 100%;
+    background: var(--cyan);
+    transition: width 0.4s ease;
+  }
+  .load-fill.warm { background: var(--gold); }
+  .load-fill.hot  { background: var(--rust); }
+
+  .switcher-close {
+    margin-top: 32px;
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--ink);
+  }
+  .switcher-close:hover { background: var(--ink); color: var(--bg); box-shadow: 6px 6px 0 var(--magenta); }
+
   /* ─── footer ─── */
   .footer {
     border-top: 2px solid var(--ink);
@@ -895,10 +1080,13 @@
   </div>
   <div></div>
   <div class="meta">
-    <div>VER <b>0.3.0</b></div>
+    <div>VER <b>0.4.0</b></div>
     <div>HOST <b id="hostInfo">—</b></div>
     <div id="clock">--:--:--</div>
-    <div class="id-badge dim" id="idBadge" title="点击切换称号 / Click to change handle"><span class="dot"></span><span id="idText">CONNECTING…</span></div>
+    <div class="meta-row">
+      <div class="id-badge room" id="roomBadge" title="点击切换房间 / Click to switch room"><span class="dot"></span><span id="roomText">ROOM · OPEN</span><span class="arrow">▸</span></div>
+      <div class="id-badge dim" id="idBadge" title="点击切换称号 / Click to change handle"><span class="dot"></span><span id="idText">CONNECTING…</span></div>
+    </div>
   </div>
   <div class="tag-row">
     <span class="tag live">● LIVE</span>
@@ -1059,6 +1247,46 @@
   </div>
 </div>
 
+<!-- ─── room switcher overlay ─── -->
+<div class="overlay" id="switcherOverlay">
+  <div class="switcher-card">
+    <div class="switcher-headline">ROOMS.<em id="switcherStatus">SCAN</em></div>
+    <div class="lobby-cn" style="margin-top:8px;margin-bottom:0">房 间 切 换 · 创 建 · 加 入</div>
+
+    <div class="switcher-section">
+      <div class="switcher-section-title">CURRENT ROOM · 当前房间</div>
+      <div class="current-room-card">
+        <div class="current-room-name" id="currentRoomName">— —</div>
+        <div class="current-room-url" id="currentRoomUrl">—</div>
+        <button class="btn alt" id="copyRoomBtn" style="margin:0">⎘ COPY LINK · 复制邀请链接</button>
+      </div>
+    </div>
+
+    <div class="switcher-section">
+      <div class="switcher-section-title">QUICK ACTIONS · 快捷操作</div>
+      <div class="room-actions">
+        <button class="btn" id="createRoomBtn">+ CREATE NEW · 创建新房间</button>
+        <div class="join-input-wrap">
+          <input type="text" class="join-input" id="joinCodeInput" maxlength="8" placeholder="CODE" autocomplete="off" spellcheck="false" />
+          <button class="btn join-btn" id="joinCodeBtn">JOIN</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="switcher-section">
+      <div class="switcher-section-title">ACTIVE ROOMS · 活跃房间</div>
+      <div class="rooms-list" id="roomsList"></div>
+    </div>
+
+    <div class="switcher-section">
+      <div class="switcher-section-title">SERVER LOAD · 服务器负载</div>
+      <div class="load-bars" id="loadBars"></div>
+    </div>
+
+    <button class="btn switcher-close" id="switcherClose">CLOSE · 关闭 (Esc)</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1066,6 +1294,9 @@
   // ─── identity ──────────────────────────────────────────
   const SID_KEY = 'gomoku_id';
   const NAME_KEY = 'gomoku_name';
+  const DEFAULT_ROOM = 'OPEN';
+  const ROOM_CODE_RE = /^[A-Z0-9]{2,8}$/;
+  const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
   let sessionId = sessionStorage.getItem(SID_KEY);
   if (!sessionId) {
@@ -1074,6 +1305,15 @@
     sessionStorage.setItem(SID_KEY, sessionId);
   }
   let myName = localStorage.getItem(NAME_KEY) || '';
+
+  // 从 URL 读取房间
+  function currentRoomFromURL() {
+    const u = new URL(location.href);
+    const r = (u.searchParams.get('room') || DEFAULT_ROOM).toUpperCase();
+    if (r === DEFAULT_ROOM || ROOM_CODE_RE.test(r)) return r;
+    return DEFAULT_ROOM;
+  }
+  let myRoom = currentRoomFromURL();
 
   const NAME_RE = /^[A-Za-z0-9_\-·一-龥]{2,16}$/;
 
@@ -1124,6 +1364,19 @@
     suggestRow: $('suggestRow'),
     lbBody: $('lbBody'),
     lbCount: $('lbCount'),
+    roomBadge: $('roomBadge'),
+    roomText: $('roomText'),
+    switcherOverlay: $('switcherOverlay'),
+    switcherStatus: $('switcherStatus'),
+    currentRoomName: $('currentRoomName'),
+    currentRoomUrl: $('currentRoomUrl'),
+    copyRoomBtn: $('copyRoomBtn'),
+    createRoomBtn: $('createRoomBtn'),
+    joinCodeInput: $('joinCodeInput'),
+    joinCodeBtn: $('joinCodeBtn'),
+    roomsList: $('roomsList'),
+    loadBars: $('loadBars'),
+    switcherClose: $('switcherClose'),
   };
 
   // ─── state ─────────────────────────────────────────────
@@ -1390,6 +1643,17 @@
 
     // leaderboard
     renderLeaderboard(state.leaderboard || []);
+
+    // room badge
+    renderRoomBadge(state.room, state.isDefaultRoom);
+    // 若切换器开着，刷新数据
+    if (els.switcherOverlay.classList.contains('show')) renderSwitcher();
+  }
+
+  function renderRoomBadge(roomCode, isDefault) {
+    const code = roomCode || DEFAULT_ROOM;
+    els.roomText.textContent = `ROOM · ${code}`;
+    els.roomBadge.classList.toggle('custom', !isDefault);
   }
 
   function renderLeaderboard(list) {
@@ -1427,6 +1691,117 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ─── room switcher ───────────────────────────────────
+  function buildRoomURL(code) {
+    const u = new URL(location.href);
+    if (!code || code === DEFAULT_ROOM) {
+      u.searchParams.delete('room');
+    } else {
+      u.searchParams.set('room', code);
+    }
+    return u.toString();
+  }
+
+  function renderSwitcher() {
+    if (!state) return;
+    const current = state.room || DEFAULT_ROOM;
+    const isDefault = state.isDefaultRoom;
+    els.switcherStatus.textContent = isDefault ? 'OPEN' : current;
+    els.currentRoomName.innerHTML = isDefault
+      ? `<span class="star">★</span> ${current}`
+      : current;
+    els.currentRoomUrl.textContent = buildRoomURL(current);
+
+    // rooms list
+    const list = state.rooms || [];
+    if (!list.length) {
+      els.roomsList.innerHTML = '<div style="padding:16px;color:#555;font-family:\'JetBrains Mono\',monospace;font-size:11px;letter-spacing:0.15em">NO ACTIVE ROOMS</div>';
+    } else {
+      els.roomsList.innerHTML = list.map(r => {
+        const playerCount = (r.p1Online ? 1 : 0) + (r.p2Online ? 1 : 0);
+        const playerStr = `${playerCount}/2`;
+        const fullCls = (r.p1Claimed && r.p2Claimed) ? ' full' : '';
+        const isCurrent = r.code === current;
+        const star = r.isDefault ? '<span class="star">★</span>' : '';
+        const statusCls = r.status.toLowerCase();
+        const joinDisabled = isCurrent ? 'disabled' : '';
+        const joinLabel = isCurrent ? 'CURRENT' : 'JOIN';
+        return `
+          <div class="room-row ${isCurrent ? 'current' : ''}" data-code="${escapeHtml(r.code)}">
+            <div class="rname">${star}${escapeHtml(r.code)}</div>
+            <div class="rcounts"><span class="${fullCls}">${playerStr}</span> · ${r.spectators} spec</div>
+            <div class="rstatus ${statusCls}">${r.status}</div>
+            <button class="rjoin" ${joinDisabled} data-code="${escapeHtml(r.code)}">${joinLabel}</button>
+          </div>
+        `;
+      }).join('');
+      els.roomsList.querySelectorAll('.rjoin').forEach(btn => {
+        if (btn.disabled) return;
+        btn.addEventListener('click', () => switchRoom(btn.dataset.code));
+      });
+    }
+
+    // load bars
+    const lim = state.limits || {};
+    const roomsPct = lim.maxRooms ? (lim.currentRooms / lim.maxRooms) : 0;
+    const clientsPct = lim.maxClients ? (lim.currentClients / lim.maxClients) : 0;
+    function bar(label, cur, max, pct) {
+      const cls = pct >= 0.9 ? 'hot' : pct >= 0.7 ? 'warm' : '';
+      return `
+        <div class="load-bar">
+          <div class="lbl">${label}</div>
+          <div class="load-track"><div class="load-fill ${cls}" style="width:${Math.min(100, pct * 100).toFixed(1)}%"></div></div>
+          <div class="val ${cls}">${cur} / ${max}</div>
+        </div>
+      `;
+    }
+    els.loadBars.innerHTML =
+      bar('ROOMS', lim.currentRooms || 0, lim.maxRooms || 0, roomsPct) +
+      bar('USERS', lim.currentClients || 0, lim.maxClients || 0, clientsPct);
+  }
+
+  function openSwitcher() {
+    renderSwitcher();
+    els.switcherOverlay.classList.add('show');
+    setTimeout(() => els.joinCodeInput.focus({ preventScroll: true }), 100);
+  }
+  function closeSwitcher() {
+    els.switcherOverlay.classList.remove('show');
+  }
+
+  function genRoomCode() {
+    let c = '';
+    for (let i = 0; i < 4; i++) c += ROOM_ALPHABET[Math.floor(Math.random() * ROOM_ALPHABET.length)];
+    return c;
+  }
+
+  function switchRoom(newCode) {
+    const code = (newCode || '').toUpperCase();
+    if (!code) return;
+    if (code !== DEFAULT_ROOM && !ROOM_CODE_RE.test(code)) {
+      return toast('INVALID CODE · 房间码无效（2-8 字母数字）', 'warn');
+    }
+    if (code === myRoom) {
+      closeSwitcher();
+      return;
+    }
+    // 限额预检查（基于上次快照）
+    if (state && state.limits) {
+      const knownCodes = new Set((state.rooms || []).map(r => r.code));
+      if (!knownCodes.has(code) && state.limits.currentRooms >= state.limits.maxRooms) {
+        return toast('MAX ROOMS REACHED · 房间数已达上限', 'warn');
+      }
+    }
+    myRoom = code;
+    const u = new URL(location.href);
+    if (code === DEFAULT_ROOM) u.searchParams.delete('room');
+    else u.searchParams.set('room', code);
+    history.pushState({}, '', u.toString());
+    closeSwitcher();
+    // 重连
+    connect();
   }
 
   function showLobby() {
@@ -1575,10 +1950,33 @@
 
   // ─── SSE ──────────────────────────────────────────────
   let es = null;
-  function connect() {
-    if (!myName) return; // login first
+  let lastReadyState = 0;
+  async function connect() {
+    if (!myName) return;
     if (es) es.close();
-    const params = `id=${encodeURIComponent(sessionId)}&name=${encodeURIComponent(myName)}`;
+
+    // 预检查容量 (避免 EventSource 自动重连无限循环 503)
+    try {
+      const probe = await fetch(`/rooms`);
+      const pj = await probe.json();
+      const lim = pj && pj.limits;
+      if (lim) {
+        const knownCodes = new Set((pj.rooms || []).map(r => r.code));
+        if (!knownCodes.has(myRoom) && myRoom !== DEFAULT_ROOM && lim.currentRooms >= lim.maxRooms) {
+          toast('MAX ROOMS REACHED · 已达房间上限，回到 OPEN', 'warn');
+          myRoom = DEFAULT_ROOM;
+          const u = new URL(location.href);
+          u.searchParams.delete('room');
+          history.replaceState({}, '', u.toString());
+        }
+        if (lim.currentClients >= lim.maxClients) {
+          toast('SERVER FULL · 服务器满载，请稍后再试', 'warn');
+          return;
+        }
+      }
+    } catch {}
+
+    const params = `id=${encodeURIComponent(sessionId)}&name=${encodeURIComponent(myName)}&room=${encodeURIComponent(myRoom)}`;
     es = new EventSource('/events?' + params);
 
     es.onmessage = (e) => {
@@ -1589,11 +1987,12 @@
       youAre = data.youAre;
       youKey = data.youKey;
       state = data;
+      // 跟随服务端权威 room（防止 URL 漂移）
+      if (state.room && state.room !== myRoom) myRoom = state.room;
       diffAndLog(prev, state);
       updateUI();
       draw();
 
-      // 分数事件 + 胜利覆盖层
       if (data.lastEvent && data.lastEvent.type === 'WIN') {
         const eid = data.serverTime + ':' + data.history.length;
         if (eid !== lastEventId) {
@@ -1608,6 +2007,19 @@
     };
 
     es.onerror = () => {
+      // 探测是否为 503 等不可恢复错误
+      if (es.readyState === EventSource.CLOSED) {
+        // 服务端拒绝（容量满 / 房间不存在），切回 OPEN
+        toast('CONNECTION REJECTED · 连接被拒，回到 OPEN', 'warn');
+        if (myRoom !== DEFAULT_ROOM) {
+          myRoom = DEFAULT_ROOM;
+          const u = new URL(location.href);
+          u.searchParams.delete('room');
+          history.replaceState({}, '', u.toString());
+          setTimeout(connect, 800);
+        }
+        return;
+      }
       els.connTag.textContent = 'RECONNECTING…';
       els.connTag.classList.add('warn');
     };
@@ -1644,11 +2056,55 @@
   });
 
   document.getElementById('copyBtn').addEventListener('click', async () => {
+    const link = buildRoomURL(myRoom);
     try {
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(link);
       toast('LINK COPIED · 邀请链接已复制', 'ok');
     } catch {
-      toast(location.href, 'ok');
+      toast(link, 'ok');
+    }
+  });
+
+  // ─── room switcher events ────────────────────────────
+  els.roomBadge.addEventListener('click', openSwitcher);
+  els.switcherClose.addEventListener('click', closeSwitcher);
+  els.switcherOverlay.addEventListener('click', (e) => {
+    if (e.target === els.switcherOverlay) closeSwitcher();
+  });
+  els.copyRoomBtn.addEventListener('click', async () => {
+    const link = buildRoomURL(state ? state.room : myRoom);
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('LINK COPIED · 邀请链接已复制', 'ok');
+    } catch {
+      toast(link, 'ok');
+    }
+  });
+  els.createRoomBtn.addEventListener('click', () => {
+    if (state && state.limits && state.limits.currentRooms >= state.limits.maxRooms) {
+      return toast('MAX ROOMS REACHED · 房间数已达上限', 'warn');
+    }
+    const code = genRoomCode();
+    switchRoom(code);
+  });
+  els.joinCodeBtn.addEventListener('click', () => {
+    const v = els.joinCodeInput.value.trim().toUpperCase();
+    if (!v) return toast('ENTER A ROOM CODE · 请输入房间码', 'warn');
+    switchRoom(v);
+  });
+  els.joinCodeInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+  els.joinCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') els.joinCodeBtn.click();
+  });
+
+  // 浏览器后退/前进 → 重新读取 room 并重连
+  window.addEventListener('popstate', () => {
+    const newRoom = currentRoomFromURL();
+    if (newRoom !== myRoom) {
+      myRoom = newRoom;
+      connect();
     }
   });
 
@@ -1658,7 +2114,10 @@
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'r' || e.key === 'R') document.getElementById('restartBtn').click();
     if (e.key === 'u' || e.key === 'U') document.getElementById('undoBtn').click();
-    if (e.key === 'Escape') els.winOverlay.classList.remove('show');
+    if (e.key === 'Escape') {
+      els.winOverlay.classList.remove('show');
+      els.switcherOverlay.classList.remove('show');
+    }
   });
 
   // ─── toast ────────────────────────────────────────────
