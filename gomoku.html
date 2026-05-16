@@ -1035,6 +1035,162 @@
   }
   .switcher-close:hover { background: var(--ink); color: var(--bg); box-shadow: 6px 6px 0 var(--magenta); }
 
+  /* ─── danmaku 弹幕 ─── */
+  .danmaku-overlay {
+    position: fixed;
+    top: 38px;          /* 让出 ticker */
+    left: 0; right: 0;
+    height: 60vh;
+    pointer-events: none;
+    z-index: 90;
+    overflow: hidden;
+  }
+  .danmaku-item {
+    position: absolute;
+    left: 100vw;
+    padding: 6px 14px;
+    background: rgba(10,10,10,0.78);
+    border: 2px solid var(--ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    white-space: nowrap;
+    will-change: transform;
+    animation: fly 9s linear forwards;
+    backdrop-filter: blur(2px);
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  }
+  .danmaku-item.p1   { border-color: var(--lime);    color: var(--lime); }
+  .danmaku-item.p2   { border-color: var(--magenta); color: var(--magenta); }
+  .danmaku-item.spectator { border-color: var(--cyan); color: var(--cyan); }
+  .danmaku-item.self {
+    background: var(--gold);
+    color: var(--bg);
+    border-color: var(--bg);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .danmaku-item .who {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    margin-right: 8px;
+    opacity: 0.75;
+  }
+  @keyframes fly {
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(-100vw - 100%)); }
+  }
+
+  /* danmaku 输入栏 */
+  .danmaku-section {
+    border: 2px solid var(--ink);
+    background: #0d0d0d;
+    margin: 0 48px 24px;
+    padding: 20px 24px 18px;
+    position: relative;
+  }
+  .danmaku-section::before {
+    content: "// DANMAKU · 弹幕";
+    position: absolute; top: -10px; left: 18px;
+    background: var(--bg); padding: 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.3em; color: var(--magenta);
+  }
+  .danmaku-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .danmaku-headline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+  .danmaku-mute-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .danmaku-mute-btn:hover { background: var(--ink); color: var(--bg); }
+  .danmaku-mute-btn.muted { background: var(--rust); color: var(--bg); border-color: var(--rust); }
+
+  .danmaku-input-row { display: flex; gap: 10px; align-items: stretch; }
+  .danmaku-input {
+    flex: 1;
+    background: transparent;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .danmaku-input:focus { border-color: var(--magenta); }
+  .danmaku-input::placeholder { color: #555; font-style: italic; }
+  .danmaku-input:disabled { opacity: 0.4; }
+  .danmaku-send {
+    padding: 12px 22px;
+    background: var(--magenta);
+    color: var(--ink);
+    border: none;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 110px;
+  }
+  .danmaku-send:hover:not(:disabled) {
+    background: var(--cyan); color: var(--bg);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .danmaku-send:disabled { background: #222; color: #555; cursor: not-allowed; }
+  .danmaku-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: #555;
+    margin-top: 4px;
+    text-align: right;
+  }
+  .danmaku-counter.warn { color: var(--rust); }
+  .danmaku-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .danmaku-chip {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    padding: 6px 12px;
+    border: 1px solid #444;
+    color: #ccc;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.12s ease;
+    text-transform: uppercase;
+  }
+  .danmaku-chip:hover {
+    background: var(--magenta); color: var(--ink); border-color: var(--magenta);
+    transform: translate(-2px, -2px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .danmaku-chip:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
   /* ─── footer ─── */
   .footer {
     border-top: 2px solid var(--ink);
@@ -1064,10 +1220,15 @@
     .lb-table thead { display: none; }
     .lb-table tbody td { padding: 8px 6px; }
     .lb-table tbody td.rate { display: none; }
+    .danmaku-section { margin: 0 20px 24px; padding: 16px; }
+    .danmaku-item { font-size: 14px; padding: 4px 10px; }
+    .danmaku-overlay { height: 50vh; }
   }
 </style>
 </head>
 <body>
+
+<div class="danmaku-overlay" id="danmakuOverlay"></div>
 
 <div class="ticker">
   <div class="ticker-track" id="ticker"></div>
@@ -1197,6 +1358,20 @@
       </tbody>
     </table>
   </div>
+</section>
+
+<!-- ─── danmaku 弹幕输入区 ─── -->
+<section class="danmaku-section">
+  <div class="danmaku-head">
+    <div class="danmaku-headline">SAY SOMETHING · 飞 字 弹 幕 · 30 字符以内 · 3 秒冷却</div>
+    <button class="danmaku-mute-btn" id="muteBtn">🔊 ON · 显示弹幕</button>
+  </div>
+  <div class="danmaku-input-row">
+    <input type="text" class="danmaku-input" id="danmakuInput" placeholder="666 / 这步神 / GG / 我裂开了 / ..." maxlength="30" autocomplete="off" />
+    <button class="danmaku-send" id="danmakuSend">SEND ▸</button>
+  </div>
+  <div class="danmaku-counter" id="danmakuCounter">0 / 30</div>
+  <div class="danmaku-chips" id="danmakuChips"></div>
 </section>
 
 <footer class="footer">
@@ -1377,6 +1552,12 @@
     roomsList: $('roomsList'),
     loadBars: $('loadBars'),
     switcherClose: $('switcherClose'),
+    danmakuOverlay: $('danmakuOverlay'),
+    danmakuInput: $('danmakuInput'),
+    danmakuSend: $('danmakuSend'),
+    danmakuCounter: $('danmakuCounter'),
+    danmakuChips: $('danmakuChips'),
+    muteBtn: $('muteBtn'),
   };
 
   // ─── state ─────────────────────────────────────────────
@@ -1800,6 +1981,9 @@
     else u.searchParams.set('room', code);
     history.pushState({}, '', u.toString());
     closeSwitcher();
+    // 清空旧房间弹幕
+    els.danmakuOverlay.innerHTML = '';
+    laneNextAvail.fill(0);
     // 重连
     connect();
   }
@@ -1983,11 +2167,17 @@
       let data;
       try { data = JSON.parse(e.data); } catch { return; }
 
+      // 按 type 分发
+      if (data.type === 'DANMAKU') {
+        handleIncomingDanmaku(data.danmaku, data.danmaku && data.danmaku.replay);
+        return;
+      }
+
+      // 默认: SNAPSHOT
       const prev = state || { history: [], finished: false };
       youAre = data.youAre;
       youKey = data.youKey;
       state = data;
-      // 跟随服务端权威 room（防止 URL 漂移）
       if (state.room && state.room !== myRoom) myRoom = state.room;
       diffAndLog(prev, state);
       updateUI();
@@ -2025,6 +2215,165 @@
     };
     es.onopen = () => { els.connTag.classList.remove('warn'); };
   }
+
+  // ─── danmaku 弹幕 ─────────────────────────────────────
+  const DANMAKU_LANES = 8;
+  const DANMAKU_LANE_TOP = 28;       // px，距 overlay 顶
+  const DANMAKU_LANE_GAP = 48;       // px
+  const DANMAKU_GAP_MS = 2400;       // 同车道最小间隔
+  const DANMAKU_FLY_MS = 9000;
+  const DANMAKU_MAX_LEN = 30;
+  const DANMAKU_COOLDOWN_MS = 3000;
+  const MUTE_KEY = 'gomoku_danmaku_muted';
+
+  const laneNextAvail = new Array(DANMAKU_LANES).fill(0);
+  let muted = localStorage.getItem(MUTE_KEY) === '1';
+  let sendCooldownUntil = 0;
+  let cooldownTimer = null;
+
+  const QUICK_CHIPS = ['666', '神！', 'GG', '稳', '裂开', '这步漂亮', '不讲武德', '五子棋大师'];
+
+  function pickLane() {
+    const now = Date.now();
+    let best = 0;
+    for (let i = 1; i < DANMAKU_LANES; i++) {
+      if (laneNextAvail[i] < laneNextAvail[best]) best = i;
+    }
+    laneNextAvail[best] = Math.max(now, laneNextAvail[best]) + DANMAKU_GAP_MS;
+    return best;
+  }
+
+  function flyDanmaku(d) {
+    if (muted) return;
+    const lane = pickLane();
+    const el = document.createElement('div');
+    const cls = ['danmaku-item'];
+    if (d.role === 'p1') cls.push('p1');
+    else if (d.role === 'p2') cls.push('p2');
+    else cls.push('spectator');
+    if (d.key === youKey) cls.push('self');
+    el.className = cls.join(' ');
+    el.style.top = (DANMAKU_LANE_TOP + lane * DANMAKU_LANE_GAP) + 'px';
+    const who = escapeHtml((d.name || '').slice(0, 12));
+    el.innerHTML = `<span class="who">${who}</span>${escapeHtml(d.text)}`;
+    els.danmakuOverlay.appendChild(el);
+    setTimeout(() => { try { el.remove(); } catch {} }, DANMAKU_FLY_MS + 200);
+  }
+
+  function logDanmaku(d, isReplay) {
+    const cls = d.role === 'p1' ? 'p1c' : d.role === 'p2' ? 'p2c' : 'sys';
+    const prefix = isReplay ? '↻' : '💬';
+    addLog(`<span class="move-no">[--]</span> ${prefix} <span class="${cls}">${escapeHtml(d.name)}</span> · ${escapeHtml(d.text)}`);
+  }
+
+  function handleIncomingDanmaku(d, isReplay) {
+    if (!d) return;
+    if (!isReplay) flyDanmaku(d);
+    logDanmaku(d, isReplay);
+  }
+
+  function applyMute() {
+    if (muted) {
+      els.muteBtn.classList.add('muted');
+      els.muteBtn.textContent = '🔇 OFF · 已隐藏';
+      // 清空当前飞屏
+      els.danmakuOverlay.innerHTML = '';
+    } else {
+      els.muteBtn.classList.remove('muted');
+      els.muteBtn.textContent = '🔊 ON · 显示弹幕';
+    }
+  }
+
+  function toggleMute() {
+    muted = !muted;
+    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    applyMute();
+    toast(muted ? '弹幕已静音 · MUTED' : '弹幕已开启 · UNMUTED', 'ok');
+  }
+
+  function setCooldown(ms) {
+    sendCooldownUntil = Date.now() + ms;
+    clearInterval(cooldownTimer);
+    function tick() {
+      const remain = Math.max(0, sendCooldownUntil - Date.now());
+      if (remain <= 0) {
+        clearInterval(cooldownTimer);
+        els.danmakuSend.disabled = false;
+        els.danmakuSend.textContent = 'SEND ▸';
+        els.danmakuChips.querySelectorAll('button').forEach(b => b.disabled = false);
+        return;
+      }
+      els.danmakuSend.disabled = true;
+      els.danmakuSend.textContent = `WAIT ${(remain/1000).toFixed(1)}s`;
+      els.danmakuChips.querySelectorAll('button').forEach(b => b.disabled = true);
+    }
+    tick();
+    cooldownTimer = setInterval(tick, 100);
+  }
+
+  async function sendDanmaku(text) {
+    text = String(text || '').trim();
+    if (!text) return;
+    if ([...text].length > DANMAKU_MAX_LEN) {
+      text = [...text].slice(0, DANMAKU_MAX_LEN).join('');
+    }
+    if (Date.now() < sendCooldownUntil) {
+      return toast(`COOLDOWN · 冷却中`, 'warn');
+    }
+    setCooldown(DANMAKU_COOLDOWN_MS);
+    try {
+      const res = await fetch('/danmaku', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sessionId, text }),
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        if (j.err === 'COOLDOWN') {
+          toast(`COOLDOWN · 冷却 ${Math.ceil(j.remaining/1000)}s`, 'warn');
+          setCooldown(j.remaining);
+        } else {
+          toast(j.err || 'DANMAKU FAILED · 发送失败', 'warn');
+          setCooldown(0);
+        }
+      }
+    } catch {
+      toast('NETWORK ERROR · 网络异常', 'warn');
+      setCooldown(0);
+    }
+  }
+
+  function renderDanmakuChips() {
+    els.danmakuChips.innerHTML = QUICK_CHIPS.map(s =>
+      `<button class="danmaku-chip" data-text="${escapeHtml(s)}">${escapeHtml(s)}</button>`
+    ).join('');
+    els.danmakuChips.querySelectorAll('.danmaku-chip').forEach(btn => {
+      btn.addEventListener('click', () => sendDanmaku(btn.dataset.text));
+    });
+  }
+
+  function updateDanmakuCounter() {
+    const len = [...els.danmakuInput.value].length;
+    els.danmakuCounter.textContent = `${len} / ${DANMAKU_MAX_LEN}`;
+    els.danmakuCounter.classList.toggle('warn', len > DANMAKU_MAX_LEN);
+  }
+
+  els.danmakuInput.addEventListener('input', updateDanmakuCounter);
+  els.danmakuInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const v = els.danmakuInput.value;
+      els.danmakuInput.value = '';
+      updateDanmakuCounter();
+      sendDanmaku(v);
+    }
+  });
+  els.danmakuSend.addEventListener('click', () => {
+    const v = els.danmakuInput.value;
+    els.danmakuInput.value = '';
+    updateDanmakuCounter();
+    sendDanmaku(v);
+  });
+  els.muteBtn.addEventListener('click', toggleMute);
 
   // ─── controls ─────────────────────────────────────────
   document.getElementById('undoBtn').addEventListener('click', async () => {
@@ -2240,6 +2589,9 @@
 
   // ─── boot ─────────────────────────────────────────────
   resize();
+  renderDanmakuChips();
+  applyMute();
+  updateDanmakuCounter();
   if (myName && NAME_RE.test(myName)) {
     connect();
   } else {

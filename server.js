@@ -34,6 +34,12 @@ const DEFAULT_ROOM = 'OPEN';
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // 去掉 I O
 const ROOM_CODE_RE = /^[A-Z0-9]{2,8}$/;
 
+// 弹幕
+const DANMAKU_COOLDOWN_MS = parseInt(process.env.DANMAKU_COOLDOWN_MS || '3000', 10);
+const DANMAKU_MAX_LEN = parseInt(process.env.DANMAKU_MAX_LEN || '30', 10);
+const DANMAKU_HISTORY_PER_ROOM = parseInt(process.env.DANMAKU_HISTORY_PER_ROOM || '20', 10);
+const danmakuLastSent = new Map(); // sessionId -> ts
+
 const SCORE = {
   WIN_BASE: 10,
   LOSS: -5,
@@ -84,6 +90,7 @@ function createRoom(code, isDefault = false) {
     disconnects: Object.create(null),
     lastActivity: Date.now(),
     createdAt: Date.now(),
+    danmaku: [],   // 滚动缓冲：最近 N 条
   };
 }
 
@@ -327,6 +334,7 @@ function snapshotForClient(client, extras) {
   const p1Online = !!room.players[0] && cs.some(c => c.nameKey === room.players[0]);
   const p2Online = !!room.players[1] && cs.some(c => c.nameKey === room.players[1]);
   return {
+    type: 'SNAPSHOT',
     room: room.code,
     isDefaultRoom: room.isDefault,
     board: room.state.board,
@@ -366,6 +374,13 @@ function broadcastRoom(roomCode, extras) {
 
 function broadcastAll(extras) {
   for (const c of clients) sendTo(c, snapshotForClient(c, extras));
+}
+
+function broadcastDanmaku(roomCode, danmaku) {
+  const payload = { type: 'DANMAKU', room: roomCode, danmaku };
+  for (const c of clients) {
+    if (c.roomCode === roomCode) sendTo(c, payload);
+  }
 }
 
 // ─── 空闲房间回收 ────────────────────────────────────
@@ -453,6 +468,14 @@ const server = http.createServer((req, res) => {
     }, 25000);
 
     sendTo(client, snapshotForClient(client));
+    // 重放最近弹幕（最多 10 条，延迟错开避免一齐进入）
+    const recent = (room.danmaku || []).slice(-10);
+    recent.forEach((d, i) => {
+      setTimeout(() => {
+        if (client.res.writableEnded) return;
+        sendTo(client, { type: 'DANMAKU', room: room.code, danmaku: { ...d, replay: true } });
+      }, 200 + i * 350);
+    });
     broadcastRoom(room.code);
     // 其他房间也更新 rooms 摘要
     broadcastAll();
@@ -518,6 +541,10 @@ const server = http.createServer((req, res) => {
         return respond(res, 200, { ok: true });
       }
 
+      if (url.pathname === '/danmaku') {
+        return handleDanmaku(res, data);
+      }
+
       respond(res, 404, { ok: false, err: 'unknown' });
     });
     return;
@@ -526,6 +553,45 @@ const server = http.createServer((req, res) => {
   res.writeHead(404);
   res.end('not found');
 });
+
+function handleDanmaku(res, data) {
+  const { role, room, client } = getRoleBySession(data.id);
+  if (!client || !room) return respond(res, 403, { ok: false, err: 'NO_SESSION' });
+
+  const now = Date.now();
+  const last = danmakuLastSent.get(data.id) || 0;
+  if (now - last < DANMAKU_COOLDOWN_MS) {
+    return respond(res, 429, {
+      ok: false, err: 'COOLDOWN',
+      remaining: DANMAKU_COOLDOWN_MS - (now - last),
+    });
+  }
+
+  let text = (typeof data.text === 'string' ? data.text : '').replace(/[\r\n\t]+/g, ' ').trim();
+  if (!text) return respond(res, 400, { ok: false, err: 'EMPTY' });
+  // 按 code-point 长度
+  const cps = [...text];
+  if (cps.length > DANMAKU_MAX_LEN) text = cps.slice(0, DANMAKU_MAX_LEN).join('');
+
+  const danmaku = {
+    id: now + ':' + Math.random().toString(36).slice(2, 6),
+    text,
+    name: records[client.nameKey]?.name || client.nameKey,
+    key: client.nameKey,
+    role,
+    ts: now,
+  };
+
+  room.danmaku.push(danmaku);
+  if (room.danmaku.length > DANMAKU_HISTORY_PER_ROOM) {
+    room.danmaku.splice(0, room.danmaku.length - DANMAKU_HISTORY_PER_ROOM);
+  }
+  danmakuLastSent.set(data.id, now);
+  room.lastActivity = now;
+
+  broadcastDanmaku(room.code, danmaku);
+  respond(res, 200, { ok: true, danmaku });
+}
 
 function handleMove(res, role, room, data) {
   if (!room) return respond(res, 400, { ok: false, err: 'no room' });
