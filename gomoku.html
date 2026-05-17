@@ -1191,6 +1191,72 @@
   }
   .danmaku-chip:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
+  /* ─── 请求横幅 (UNDO / NEW GAME confirmation) ─── */
+  .request-banner {
+    display: none;
+    margin: 0 0 16px;
+    padding: 18px 22px;
+    border: 2px solid var(--gold);
+    background: rgba(255,210,63,0.07);
+    box-shadow: 8px 8px 0 var(--gold);
+    position: relative;
+    animation: pulseGlow 1.4s ease-in-out infinite alternate;
+  }
+  .request-banner.show { display: block; }
+  @keyframes pulseGlow {
+    from { box-shadow: 6px 6px 0 var(--gold); }
+    to   { box-shadow: 10px 10px 0 var(--gold); }
+  }
+  .request-banner.target { border-color: var(--magenta); background: rgba(255,46,136,0.08); }
+  .request-banner.target { animation: none; box-shadow: 8px 8px 0 var(--magenta); }
+  .request-banner.requester { border-color: var(--cyan); background: rgba(0,229,255,0.07); }
+  .request-banner.requester { animation: none; box-shadow: 8px 8px 0 var(--cyan); }
+
+  .req-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .req-headline {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+  }
+  .req-headline em { font-style: italic; color: var(--gold); }
+  .req-headline .icon { margin-right: 8px; }
+  .req-cn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    color: #aaa;
+  }
+  .req-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+  }
+  .req-timer b { color: var(--ink); }
+  .req-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .req-btn {
+    flex: 1; min-width: 140px;
+    padding: 12px 18px;
+    border: none;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .req-btn.accept { background: var(--lime); color: var(--bg); }
+  .req-btn.accept:hover { background: var(--cyan); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+  .req-btn.decline { background: var(--rust); color: var(--ink); }
+  .req-btn.decline:hover { background: var(--magenta); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+  .req-btn.cancel { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
+  .req-btn.cancel:hover { background: var(--ink); color: var(--bg); box-shadow: 4px 4px 0 var(--rust); }
+
   /* ─── footer ─── */
   .footer {
     border-top: 2px solid var(--ink);
@@ -1307,6 +1373,16 @@
   </aside>
 
   <section>
+    <div class="request-banner" id="requestBanner">
+      <div class="req-top">
+        <div>
+          <div class="req-headline" id="reqHeadline"><span class="icon">⏳</span>—</div>
+          <div class="req-cn" id="reqCn">等待响应</div>
+        </div>
+        <div class="req-timer">EXPIRES IN · 剩余 <b id="reqTimer">--</b>s</div>
+      </div>
+      <div class="req-actions" id="reqActions"></div>
+    </div>
     <div class="board-wrap">
       <div class="board-corner corner-tl"></div>
       <div class="board-corner corner-tr"></div>
@@ -1558,6 +1634,11 @@
     danmakuCounter: $('danmakuCounter'),
     danmakuChips: $('danmakuChips'),
     muteBtn: $('muteBtn'),
+    requestBanner: $('requestBanner'),
+    reqHeadline: $('reqHeadline'),
+    reqCn: $('reqCn'),
+    reqTimer: $('reqTimer'),
+    reqActions: $('reqActions'),
   };
 
   // ─── state ─────────────────────────────────────────────
@@ -1827,8 +1908,29 @@
 
     // room badge
     renderRoomBadge(state.room, state.isDefaultRoom);
+
+    // 按钮文案根据 pendingRequest 调整
+    updateActionButtons();
+
     // 若切换器开着，刷新数据
     if (els.switcherOverlay.classList.contains('show')) renderSwitcher();
+  }
+
+  function updateActionButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const req = state && state.pendingRequest;
+    const myReq = req && req.requesterKey === youKey;
+    if (myReq && req.type === 'UNDO') {
+      undoBtn.innerHTML = '↩ CANCEL UNDO<span class="btn-cn">撤 回 悔 棋</span>';
+    } else {
+      undoBtn.innerHTML = '↶ UNDO<span class="btn-cn">悔 · 棋</span>';
+    }
+    if (myReq && req.type === 'RESTART') {
+      restartBtn.innerHTML = '↩ CANCEL NEW GAME<span class="btn-cn">撤 回 新 对 局</span>';
+    } else {
+      restartBtn.innerHTML = '↻ NEW GAME<span class="btn-cn">开 始 新 对 局</span>';
+    }
   }
 
   function renderRoomBadge(roomCode, isDefault) {
@@ -2181,7 +2283,10 @@
       if (state.room && state.room !== myRoom) myRoom = state.room;
       diffAndLog(prev, state);
       updateUI();
+      renderRequestBanner();
       draw();
+
+      if (data.requestEvent) handleRequestEvent(data.requestEvent);
 
       if (data.lastEvent && data.lastEvent.type === 'WIN') {
         const eid = data.serverTime + ':' + data.history.length;
@@ -2375,6 +2480,107 @@
   });
   els.muteBtn.addEventListener('click', toggleMute);
 
+  // ─── 请求横幅 (UNDO / RESTART) ───────────────────────
+  let reqTimerHandle = null;
+
+  function renderRequestBanner() {
+    const banner = els.requestBanner;
+    const req = state && state.pendingRequest;
+    if (!req) {
+      banner.classList.remove('show', 'target', 'requester');
+      els.reqActions.innerHTML = '';
+      if (reqTimerHandle) { clearInterval(reqTimerHandle); reqTimerHandle = null; }
+      return;
+    }
+    banner.classList.add('show');
+    const isRequester = req.requesterKey === youKey;
+    const isTarget = req.targetKey === youKey;
+    banner.classList.toggle('requester', isRequester);
+    banner.classList.toggle('target', isTarget);
+
+    const typeLabel = req.type === 'UNDO' ? 'UNDO ↶' : 'NEW GAME ↻';
+    const typeCn = req.type === 'UNDO' ? '悔棋' : '新对局';
+
+    if (isRequester) {
+      els.reqHeadline.innerHTML = `<span class="icon">⏳</span>YOU REQUESTED · <em>${typeLabel}</em>`;
+      els.reqCn.textContent = `你请求${typeCn} · 等待 ${escapeHtml(req.targetName || '对手')} 回应`;
+      els.reqActions.innerHTML = `<button class="req-btn cancel" id="reqCancelBtn">↩ CANCEL · 撤回请求</button>`;
+      $('reqCancelBtn').addEventListener('click', () => sendRespond(false, true));
+    } else if (isTarget) {
+      els.reqHeadline.innerHTML = `<span class="icon">🤝</span><em>${escapeHtml(req.requesterName)}</em> REQUESTS · ${typeLabel}`;
+      els.reqCn.textContent = `${escapeHtml(req.requesterName)} 请求${typeCn} · 请回应`;
+      els.reqActions.innerHTML = `
+        <button class="req-btn accept" id="reqAcceptBtn">✓ ACCEPT · 同意</button>
+        <button class="req-btn decline" id="reqDeclineBtn">✗ DECLINE · 拒绝</button>
+      `;
+      $('reqAcceptBtn').addEventListener('click', () => sendRespond(true));
+      $('reqDeclineBtn').addEventListener('click', () => sendRespond(false));
+    } else {
+      els.reqHeadline.innerHTML = `<span class="icon">👀</span><em>${escapeHtml(req.requesterName)}</em> → ${escapeHtml(req.targetName)} · ${typeLabel}`;
+      els.reqCn.textContent = `等待 ${escapeHtml(req.targetName)} 回应`;
+      els.reqActions.innerHTML = '';
+    }
+
+    if (reqTimerHandle) clearInterval(reqTimerHandle);
+    function tick() {
+      const remain = Math.max(0, Math.ceil((req.expiresAt - Date.now()) / 1000));
+      els.reqTimer.textContent = String(remain);
+      if (remain <= 0) { clearInterval(reqTimerHandle); reqTimerHandle = null; }
+    }
+    tick();
+    reqTimerHandle = setInterval(tick, 500);
+  }
+
+  async function sendRespond(accept, isWithdraw) {
+    try {
+      const res = await fetch('/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sessionId, accept }),
+      });
+      const j = await res.json();
+      if (!j.ok) toast(j.err || 'REQUEST FAILED · 操作失败', 'warn');
+    } catch {
+      toast('NETWORK ERROR · 网络异常', 'warn');
+    }
+  }
+
+  function handleRequestEvent(ev) {
+    if (!ev || !ev.type) return;
+    const typeLabel = ev.type === 'UNDO' ? '悔棋' : '新对局';
+    const typeEn = ev.type === 'UNDO' ? 'UNDO' : 'NEW GAME';
+    switch (ev.kind) {
+      case 'REQUESTED':
+        if (ev.requesterName !== state?.youName) {
+          toast(`${ev.requesterName} REQUESTED ${typeEn} · 请求${typeLabel}`, 'warn');
+          addLog(`<span class="move-no">[--]</span> 🤝 <span class="sys">${escapeHtml(ev.requesterName)}</span> 请求${typeLabel}`);
+        } else {
+          addLog(`<span class="move-no">[--]</span> 🤝 <span class="sys">YOU</span> 请求${typeLabel}`);
+        }
+        break;
+      case 'ACCEPTED':
+        toast(`${typeEn} ACCEPTED · ${typeLabel}通过`, 'ok');
+        addLog(`<span class="move-no">[--]</span> ✓ <span class="gold">${escapeHtml(ev.targetName)}</span> 同意了${typeLabel}`);
+        break;
+      case 'DECLINED':
+        toast(`${typeEn} DECLINED · ${typeLabel}被拒绝`, 'warn');
+        addLog(`<span class="move-no">[--]</span> ✗ <span class="sys">${escapeHtml(ev.targetName)}</span> 拒绝了${typeLabel}`);
+        break;
+      case 'WITHDRAWN':
+        toast(`${typeEn} WITHDRAWN · ${typeLabel}已撤回`, 'ok');
+        addLog(`<span class="move-no">[--]</span> ↩ <span class="sys">${escapeHtml(ev.requesterName)}</span> 撤回了${typeLabel}请求`);
+        break;
+      case 'EXPIRED':
+        toast(`${typeEn} EXPIRED · ${typeLabel}请求超时`, 'warn');
+        addLog(`<span class="move-no">[--]</span> ⌛ ${typeLabel}请求超时`);
+        break;
+      case 'EXECUTED':
+        // 直接执行（单人/对局已结束），无需特别 toast，updateUI 已反映
+        addLog(`<span class="move-no">[--]</span> ✓ <span class="sys">${escapeHtml(ev.type === 'UNDO' ? 'UNDO' : 'NEW GAME')}</span> 执行`);
+        break;
+    }
+  }
+
   // ─── controls ─────────────────────────────────────────
   document.getElementById('undoBtn').addEventListener('click', async () => {
     if (!state || state.finished || !state.history.length) return;
@@ -2385,7 +2591,16 @@
       body: JSON.stringify({id: sessionId}),
     });
     const j = await res.json();
-    if (!j.ok) toast(j.err || 'UNDO FAILED · 撤销失败', 'warn');
+    if (!j.ok) {
+      const map = {
+        'PENDING_OTHER': '请先回应对方的请求',
+        'cannot undo':  '当前无法撤销',
+        'spectator':    '观战不可撤销',
+      };
+      return toast(map[j.err] || j.err || 'UNDO FAILED', 'warn');
+    }
+    if (j.pending)  toast('REQUEST SENT · 已请求悔棋，等待对手回应', 'ok');
+    if (j.withdrawn) toast('REQUEST WITHDRAWN · 已撤回悔棋请求', 'ok');
   });
 
   document.getElementById('restartBtn').addEventListener('click', async () => {
@@ -2396,7 +2611,15 @@
       body: JSON.stringify({id: sessionId}),
     });
     const j = await res.json();
-    if (!j.ok) toast(j.err || 'RESTART FAILED · 重开失败', 'warn');
+    if (!j.ok) {
+      const map = {
+        'PENDING_OTHER': '请先回应对方的请求',
+        'spectator':     '观战不可重开',
+      };
+      return toast(map[j.err] || j.err || 'RESTART FAILED', 'warn');
+    }
+    if (j.pending)   toast('REQUEST SENT · 已请求新对局，等待对手回应', 'ok');
+    if (j.withdrawn) toast('REQUEST WITHDRAWN · 已撤回新对局请求', 'ok');
   });
 
   document.getElementById('winRestart').addEventListener('click', () => {

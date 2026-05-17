@@ -40,6 +40,9 @@ const DANMAKU_MAX_LEN = parseInt(process.env.DANMAKU_MAX_LEN || '30', 10);
 const DANMAKU_HISTORY_PER_ROOM = parseInt(process.env.DANMAKU_HISTORY_PER_ROOM || '20', 10);
 const danmakuLastSent = new Map(); // sessionId -> ts
 
+// 请求超时
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || '30000', 10);
+
 const SCORE = {
   WIN_BASE: 10,
   LOSS: -5,
@@ -90,7 +93,8 @@ function createRoom(code, isDefault = false) {
     disconnects: Object.create(null),
     lastActivity: Date.now(),
     createdAt: Date.now(),
-    danmaku: [],   // 滚动缓冲：最近 N 条
+    danmaku: [],
+    pendingRequest: null,   // { type, requesterKey, targetKey, expiresAt, timer }
   };
 }
 
@@ -180,8 +184,60 @@ function scheduleSlotRelease(roomCode, key) {
     if (r.players[0] === key) r.players[0] = null;
     if (r.players[1] === key) r.players[1] = null;
     delete r.disconnects[key];
+    // 玩家彻底离开 → 取消其相关请求
+    cancelPendingRequest(r, 'OPPONENT_GONE');
     broadcastRoom(roomCode);
   }, RECONNECT_GRACE_MS + 200);
+}
+
+// ─── 请求 (UNDO / RESTART) ────────────────────────────
+function publicPendingRequest(req) {
+  if (!req) return null;
+  return {
+    type: req.type,
+    requesterKey: req.requesterKey,
+    requesterName: records[req.requesterKey]?.name || req.requesterKey,
+    targetKey: req.targetKey,
+    targetName: records[req.targetKey]?.name || req.targetKey,
+    expiresAt: req.expiresAt,
+  };
+}
+
+function cancelPendingRequest(room, reason) {
+  if (!room.pendingRequest) return null;
+  const old = room.pendingRequest;
+  if (old.timer) clearTimeout(old.timer);
+  room.pendingRequest = null;
+  return { ...old, reason };
+}
+
+function setPendingRequest(room, type, requesterKey, targetKey) {
+  cancelPendingRequest(room, 'REPLACED');
+  const expiresAt = Date.now() + REQUEST_TIMEOUT_MS;
+  const req = { type, requesterKey, targetKey, expiresAt, timer: null };
+  req.timer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    if (room.pendingRequest !== req) return;
+    room.pendingRequest = null;
+    broadcastRoom(room.code, { requestEvent: { kind: 'EXPIRED', type, requesterName: records[requesterKey]?.name } });
+  }, REQUEST_TIMEOUT_MS + 50);
+  room.pendingRequest = req;
+  return req;
+}
+
+function executeUndo(room) {
+  if (room.state.finished || !room.state.history.length) return false;
+  const last = room.state.history.pop();
+  room.state.board[last.r][last.c] = 0;
+  room.state.current = last.p;
+  room.state.winLine = null;
+  room.lastActivity = Date.now();
+  return true;
+}
+
+function executeRestart(room) {
+  room.state = createGameState();
+  room.lastActivity = Date.now();
 }
 
 // ─── 玩家档案 ─────────────────────────────────────────
@@ -353,6 +409,7 @@ function snapshotForClient(client, extras) {
     leaderboard: leaderboard(),
     totalPlayers: Object.keys(records).length,
     limits: limitsInfo(),
+    pendingRequest: publicPendingRequest(room.pendingRequest),
     serverTime: Date.now(),
     youAre: roleInRoom(room, client.nameKey),
     youKey: client.nameKey,
@@ -522,23 +579,15 @@ const server = http.createServer((req, res) => {
       if (url.pathname === '/move') return handleMove(res, role, room, data);
 
       if (url.pathname === '/restart') {
-        if (role === 'spectator' || !room) return respond(res, 403, { ok: false, err: 'spectator' });
-        room.state = createGameState();
-        room.lastActivity = Date.now();
-        broadcastRoom(room.code);
-        return respond(res, 200, { ok: true });
+        return handleRestart(res, role, room, client);
       }
 
       if (url.pathname === '/undo') {
-        if (role === 'spectator' || !room) return respond(res, 403, { ok: false, err: 'spectator' });
-        if (room.state.finished || !room.state.history.length) return respond(res, 400, { ok: false, err: 'cannot undo' });
-        const last = room.state.history.pop();
-        room.state.board[last.r][last.c] = 0;
-        room.state.current = last.p;
-        room.state.winLine = null;
-        room.lastActivity = Date.now();
-        broadcastRoom(room.code);
-        return respond(res, 200, { ok: true });
+        return handleUndo(res, role, room, client);
+      }
+
+      if (url.pathname === '/respond') {
+        return handleRespond(res, role, room, client, data);
       }
 
       if (url.pathname === '/danmaku') {
@@ -593,6 +642,123 @@ function handleDanmaku(res, data) {
   respond(res, 200, { ok: true, danmaku });
 }
 
+function handleRestart(res, role, room, client) {
+  if (!room) return respond(res, 400, { ok: false, err: 'no room' });
+  if (role === 'spectator') return respond(res, 403, { ok: false, err: 'spectator' });
+
+  const selfKey = client.nameKey;
+  const otherSlot = role === 'p1' ? 1 : 0;
+  const otherKey = room.players[otherSlot];
+  const otherOnline = otherKey && keyHasActiveClientInRoom(otherKey, room.code);
+
+  // 若对手不在场，或游戏已结束 → 直接执行
+  if (!otherKey || !otherOnline || room.state.finished) {
+    cancelPendingRequest(room, 'EXECUTED');
+    executeRestart(room);
+    broadcastRoom(room.code, { requestEvent: { kind: 'EXECUTED', type: 'RESTART', actor: selfKey } });
+    return respond(res, 200, { ok: true, immediate: true });
+  }
+
+  // 已有请求：如果是自己的同型请求 → 撤回；否则拒绝
+  const cur = room.pendingRequest;
+  if (cur) {
+    if (cur.requesterKey === selfKey) {
+      cancelPendingRequest(room, 'WITHDRAWN');
+      broadcastRoom(room.code, { requestEvent: { kind: 'WITHDRAWN', type: cur.type, requesterName: records[selfKey]?.name } });
+      return respond(res, 200, { ok: true, withdrawn: true });
+    }
+    return respond(res, 409, { ok: false, err: 'PENDING_OTHER', message: '请先回应对方的请求' });
+  }
+
+  setPendingRequest(room, 'RESTART', selfKey, otherKey);
+  broadcastRoom(room.code, { requestEvent: { kind: 'REQUESTED', type: 'RESTART', requesterName: records[selfKey]?.name } });
+  respond(res, 200, { ok: true, pending: true });
+}
+
+function handleUndo(res, role, room, client) {
+  if (!room) return respond(res, 400, { ok: false, err: 'no room' });
+  if (role === 'spectator') return respond(res, 403, { ok: false, err: 'spectator' });
+  if (room.state.finished || !room.state.history.length) {
+    return respond(res, 400, { ok: false, err: 'cannot undo' });
+  }
+
+  const selfKey = client.nameKey;
+  const otherSlot = role === 'p1' ? 1 : 0;
+  const otherKey = room.players[otherSlot];
+  const otherOnline = otherKey && keyHasActiveClientInRoom(otherKey, room.code);
+
+  // 单人房：直接撤销
+  if (!otherKey || !otherOnline) {
+    cancelPendingRequest(room, 'EXECUTED');
+    if (!executeUndo(room)) return respond(res, 400, { ok: false, err: 'cannot undo' });
+    broadcastRoom(room.code, { requestEvent: { kind: 'EXECUTED', type: 'UNDO', actor: selfKey } });
+    return respond(res, 200, { ok: true, immediate: true });
+  }
+
+  const cur = room.pendingRequest;
+  if (cur) {
+    if (cur.requesterKey === selfKey) {
+      cancelPendingRequest(room, 'WITHDRAWN');
+      broadcastRoom(room.code, { requestEvent: { kind: 'WITHDRAWN', type: cur.type, requesterName: records[selfKey]?.name } });
+      return respond(res, 200, { ok: true, withdrawn: true });
+    }
+    return respond(res, 409, { ok: false, err: 'PENDING_OTHER', message: '请先回应对方的请求' });
+  }
+
+  setPendingRequest(room, 'UNDO', selfKey, otherKey);
+  broadcastRoom(room.code, { requestEvent: { kind: 'REQUESTED', type: 'UNDO', requesterName: records[selfKey]?.name } });
+  respond(res, 200, { ok: true, pending: true });
+}
+
+function handleRespond(res, role, room, client, data) {
+  if (!room) return respond(res, 400, { ok: false, err: 'no room' });
+  if (role === 'spectator') return respond(res, 403, { ok: false, err: 'spectator' });
+  const req = room.pendingRequest;
+  if (!req) return respond(res, 400, { ok: false, err: 'NO_PENDING' });
+
+  const selfKey = client.nameKey;
+  const accept = !!data.accept;
+
+  // 请求方撤回
+  if (req.requesterKey === selfKey) {
+    cancelPendingRequest(room, 'WITHDRAWN');
+    broadcastRoom(room.code, { requestEvent: { kind: 'WITHDRAWN', type: req.type, requesterName: records[selfKey]?.name } });
+    return respond(res, 200, { ok: true, withdrawn: true });
+  }
+
+  if (req.targetKey !== selfKey) {
+    return respond(res, 403, { ok: false, err: 'NOT_TARGET' });
+  }
+
+  // 同意 → 执行
+  if (accept) {
+    cancelPendingRequest(room, 'ACCEPTED');
+    if (req.type === 'UNDO') {
+      if (!executeUndo(room)) {
+        broadcastRoom(room.code, { requestEvent: { kind: 'ACCEPTED_NOOP', type: 'UNDO' } });
+        return respond(res, 200, { ok: true });
+      }
+    } else if (req.type === 'RESTART') {
+      executeRestart(room);
+    }
+    broadcastRoom(room.code, { requestEvent: {
+      kind: 'ACCEPTED', type: req.type,
+      requesterName: records[req.requesterKey]?.name,
+      targetName: records[selfKey]?.name,
+    }});
+    return respond(res, 200, { ok: true });
+  }
+
+  // 拒绝
+  cancelPendingRequest(room, 'DECLINED');
+  broadcastRoom(room.code, { requestEvent: {
+    kind: 'DECLINED', type: req.type,
+    requesterName: records[req.requesterKey]?.name,
+    targetName: records[selfKey]?.name,
+  }});
+  respond(res, 200, { ok: true });
+}
+
 function handleMove(res, role, room, data) {
   if (!room) return respond(res, 400, { ok: false, err: 'no room' });
   if (room.state.finished) return respond(res, 400, { ok: false, err: 'finished' });
@@ -605,6 +771,9 @@ function handleMove(res, role, room, data) {
   }
 
   if (room.state.history.length === 0) room.state.gameStartTime = Date.now();
+
+  // 任一方落子 → 自动取消挂起的请求（视为继续对局）
+  cancelPendingRequest(room, 'MOVE');
 
   room.state.board[r][c] = room.state.current;
   room.state.history.push({ r, c, p: room.state.current });
